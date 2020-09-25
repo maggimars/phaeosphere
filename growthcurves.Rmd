@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 *GOAL:* 
 
-Create growth curve plots and calculate specific growth rates for each strain, treatment, and transfer with as little repition of code as possible.  
+Create growth curve plots and calculate specific growth rates for each strain, treatment, and transfer with as little repetition of code as possible.  
 
 Packages:
 ```{r}
@@ -29,32 +29,7 @@ fluor$transfer <- as.character(fluor$transfer)
 ```
 
 ```{r}
-fluor %>% dplyr::filter(transfer =="2" & Rep == "1" & Strain != "1528s" & AB == "AB_treated" ) %>% mutate(logRFU = log(Fluoresence)) %>% ggplot(aes(x=Day, y=logRFU))+ geom_point() + facet_wrap(Strain~., scales = "free_y") + theme_bw() + theme(panel.grid.minor = element_blank(), panel.grid.major = element_blank())
-```
-
-```{r}
-flourforlm1528 <- fluor %>% dplyr::filter(transfer == "2" & Rep == "1" & Strain == "1528c" &Day != 0 ) %>% mutate(logRFU = log(Fluoresence))
-
-lm(Day ~ logRFU, data = flourforlm1528)
-```
-
-```{r}
-flourforlm629 <- fluor %>% dplyr::filter(transfer == "2" & Rep == "1" & Strain == "629" &Day != 0 ) %>% mutate(logRFU = log(Fluoresence))
-
-lm(Day ~ logRFU, data = flourforlm629)
-```
-
-
-```{r}
-flourforlm2710 <- fluor %>% dplyr::filter(transfer == "2" & Rep == "1" & Strain == "2710" & Day != 0 ) %>% mutate(logRFU = log(Fluoresence))
-
-lm(Day ~ logRFU, data = flourforlm2710)
-```
-
-```{r}
-flourforlmkuro <- fluor %>% dplyr::filter(transfer == "2" & Rep == "1" & Strain == "kuro" & Day != 0 ) %>% mutate(logRFU = log(Fluoresence))
-
-lm(Day ~ logRFU, data = flourforlmkuro)$coefficients[2]
+fluor %>% dplyr::filter(transfer %in% c("2", "3") & Rep == "1" & Strain != "1528s" & AB == "AB_treated" ) %>% mutate(logRFU = log(Fluoresence)) %>% ggplot(aes(x=Day, y=logRFU, color = transfer))+ geom_point() + facet_wrap(Strain~., scales = "free_y") + theme_test() + scale_color_brewer(palette = "Paired")
 ```
 
 
@@ -66,15 +41,25 @@ strains <- unique(fluor1$Strain)
 
 slope <- vector("double", length(strains)) 
 
-for(i in seq_along(strains)) {
-  st<-(strains[[i]])
-  flourforlm <- fluor %>% dplyr::filter(transfer == "2" & Rep == "1" & Strain == st & Day != 0 ) %>% mutate(logRFU = log(Fluoresence))
-  slope[[i]]  <- (lm(Day ~ logRFU, data = flourforlm)$coefficients[2])
-  
-}
+  for(i in seq_along(strains)) {
+    st<-(strains[[i]])
+    flourforlm <- fluor %>% dplyr::filter(transfer == "2" & Rep == "1" & Strain == st & Day != 0 ) %>% mutate(logRFU = log(Fluoresence))
+    slope[[i]]  <- (lm(Day ~ logRFU, data = flourforlm)$coefficients[2])
+    
+  }
+
 
 data.frame(strain = strains, m = slope)
 
 ```
 
+```{r}
+flourforlm <- fluor %>% dplyr::filter( Rep == "1"  & Day != 0 & Strain != "1528s") %>% mutate(logRFU = log(Fluoresence)) %>% group_by(Strain, transfer, AB) %>% dplyr::summarize(m = (lm(Day ~ logRFU, data = flourforlm)$coefficients[2]) )
+
+flourforlm
+```
+
+```{r}
+ggplot(as.data.frame(flourforlm), aes(x=transfer, y = m)) + facet_wrap(Strain~.) + geom_bar(stat= "identity", aes(fill=AB), color = "black") + scale_fill_manual(values = c("grey" , "white")) +theme_test()
+```
 
