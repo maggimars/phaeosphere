@@ -1,0 +1,8 @@
+*.Rproj.user
+*.Rhistory
+*.RData
+*.Ruserdata
+*.fasta
+seqs/
+*.gzv
+recruitment_*
