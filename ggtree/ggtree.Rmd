@@ -1,0 +1,178 @@
+---
+title: "Untitled"
+author: "Maggi Brisbin"
+date: "1/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(stringr)
+library(dplyr)
+library(ggplot2)
+
+library(ggtree)
+library(treeio)
+library(tidytree)
+`%ni%` = Negate(`%in%`)
+
+colors=c('#e9e9e9','#C14450','#f3757b','#f0b08f','#c2aba6','#60555f','#232229','#3c6481','#9fd6e6','#256F64','#63a375')
+
+tre <-read.newick("~/Desktop/PhaeoPhycosphere/recruitmentStudy/MC_rooted-fasttree-tree.nwk/tree.nwk", node.label = "label")
+
+ggtree(tre)
+```
+
+```{r}
+bubble_data<-read.csv("bubbleplot_df.csv")
+names(bubble_data)[1] <- "label"
+bubble_data$Order<-str_sub(bubble_data$Order, 5, str_length(bubble_data$Order))
+bubble_data$Phylum<-str_sub(bubble_data$Phylum, 5, str_length(bubble_data$Phylum))
+bubble_data$Class<-str_sub(bubble_data$Class, 5, str_length(bubble_data$Class))
+```
+
+step 1. prune tree to only include ASVs in this set: 
+
+```{r}
+
+x<-as_tibble(tre)
+
+dfx<- as.data.frame(x)
+#make list "to drop"
+todrop <- dfx[dfx$label %ni% unique(bubble_data$label),]$label
+
+reduced <- drop.tip(tre, todrop)
+```
+
+```{r}
+ggtree(reduced) +geom_tiplab(size=0, align=TRUE, linesize=.05)
+```
+Step 2. annotate and format tree as desired (colors for groups, etc.)
+
+```{r}
+#add order to tibble to line up node numbers with Order 
+
+TaxaData <- bubble_data %>%  dplyr::select(label, Phylum, Class, Order)
+TaxaData <-TaxaData[!duplicated(TaxaData$label),]
+
+x<- as_tibble(reduced)
+
+y <- full_join(x, TaxaData, by = 'label')
+
+reduced4plot <- as.treedata(y)
+
+Oceanospirillales_node<- ancestor(y, "787644618b763435c4533db8160a05c3")
+
+treeplot<- ggtree(reduced4plot, aes(color=Phylum)) + geom_cladelabel(node=1151, label="Oceanospirillales", angle =270,  align=FALSE, offset.text=.008, hjust='center', fontsize = 2) +theme_tree() + theme(legend.position = "none")
+
+treeplot
+```
+
+
+Step 3. Make heatplot with relative abundandances 
+
+```{r}
+#facet_plot(treeplot, panel = "RelAbund", data = bubble_data[bubble_data$Abundance >0,], geom = geom_point, mapping=aes(x = SampleName, color = "black", size = Abundance)) 
+```
+
+
+```{r}
+abundanceSub <- read.csv("abundanceSubset.csv")
+abundanceSub$label <- as.character(abundanceSub$label)
+row.names(abundanceSub) <- abundanceSub$label
+abundanceSub<- abundanceSub[,-1]
+
+```
+
+
+
+```{r}
+library(ggnewscale)
+
+p1 <- gheatmap(treeplot, abundanceSub, colnames=FALSE) + 
+     scale_fill_gradient(low="white", high="red",    
+                   breaks=seq(0,1,0.25), 
+                   limits=c(0, 50))  + theme(legend.position = "none")
+
+p2 <- p1 + new_scale_fill()
+gheatmap(p2, abundanceSub, offset=1,
+         colnames_angle=90, colnames_offset_y = .25)  + 
+     scale_fill_gradient(low="white", high="red",    
+                   breaks=seq(0,100,25), 
+                   limits=c(0, 50)) + theme(legend.position = "none")
+
+
+p3 <- p2 + new_scale_fill()
+gheatmap(p3, abundanceSub, offset=1,
+         colnames_angle=90, colnames_offset_y = .25)  + theme(legend.position="none")
+
+
+```
+
+
+
+
+
+
+
+Step 4. put together tree and heat plot
+
+### maybe this would be more useful if only included the taxa in recruited/original and not the ones that were in SW but not in the cultures? 
+ the empty space is compelling but....
+ 
+```{r}
+bubble_data<-read.csv("microbiomemeta.csv")
+names(bubble_data)[1] <- "label"
+bubble_data$Order<-str_sub(bubble_data$Order, 5, str_length(bubble_data$Order))
+bubble_data$Phylum<-str_sub(bubble_data$Phylum, 5, str_length(bubble_data$Phylum))
+bubble_data$Class<-str_sub(bubble_data$Class, 5, str_length(bubble_data$Class))
+```
+
+step 1. prune tree to only include ASVs in this set: 
+
+```{r}
+
+x<-as_tibble(tre)
+
+dfx<- as.data.frame(x)
+#make list "to drop"
+todrop <- dfx[dfx$label %ni% unique(bubble_data$label),]$label
+
+reduced <- drop.tip(tre, todrop)
+
+x<- as_tibble(reduced)
+
+TaxaData <- bubble_data %>%  dplyr::select(label, Phylum, Class, Order)
+TaxaData <-TaxaData[!duplicated(TaxaData$label),]
+
+y <- full_join(x, TaxaData, by = 'label')
+
+reduced4plot <- as.treedata(y)
+
+
+Oceanospirillales_node<- ancestor(y, "787644618b763435c4533db8160a05c3")
+altero <- ancestor(y, "2178df8b26afebada98155b8cad0c967")
+entero <- ancestor(y, "20a8421dc461b541f429438b3b76ec35")
+vibrio <- ancestor(y, "1ae434de7911786ccf390031af76391c")
+
+```
+
+```{r}
+ggtree(reduced4plot) +geom_tiplab(size=0, align=TRUE, linesize=.05)  
+
+  
+```
+ 
+```{r}
+library(ape)
+
+pdf("tree.pdf")
+plot(reduced, show.tip.label = FALSE)
+nodelabels()
+dev.o
+```
+ 
